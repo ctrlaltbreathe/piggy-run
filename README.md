@@ -10,7 +10,7 @@ The **WORLD** record and public top-ten board are stored by the PiggyBank score 
 
 Occasional five-coin arcs can be collected with one well timed jump for 125 coin points. The arc rules use a new verified leaderboard; earlier records remain archived.
 
-The current rules increase movement speed by 6% every 2,000 points, up to 48% faster at 16,000 points. Ground hazards retain enough spacing for a full jump at top pace. USDT bags add 100 points, and flying red candle drones are safe to pass beneath. Coin opportunities become more frequent over longer runs. The version-five verified board is separate from earlier rules, whose records remain archived.
+The current rules increase movement speed by 6% every 2,000 points, up to 48% faster at 16,000 points. Ground hazards retain enough spacing for a full jump at top pace. USDT bags add 100 points, and flying red candle drones are safe to pass beneath. Coin opportunities become more frequent over longer runs. The version-five verified board is separate from earlier rules, whose records remain archived. The score panel also shows the earlier device best when this browser has one saved.
 
 ## Local preview
 

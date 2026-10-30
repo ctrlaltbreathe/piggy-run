@@ -16,6 +16,12 @@
   let audioContext;
   let best = 0;
   try { best = Number(localStorage.getItem('piggy-run-best-v5')) || 0; } catch (_) {}
+  let earlierDeviceBest = 0;
+  try { earlierDeviceBest = Math.max(Number(localStorage.getItem('piggy-run-best-v4')) || 0, Number(localStorage.getItem('piggy-run-best-v3')) || 0); } catch (_) {}
+  if (earlierDeviceBest > 0) {
+    $('old-device-best').hidden = false;
+    $('old-device-best').textContent = 'Your earlier-rules device best: ' + earlierDeviceBest;
+  }
   bestLabel.textContent = String(best);
   let worldBest = null;
   let player = null;
