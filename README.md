@@ -6,7 +6,7 @@ A standalone, free PiggyBank endless runner made with Phaser 3.86.0.
 
 Open the published URL on desktop or phone. Press **Space**, **Up**, or tap the game to jump. Collect USDT coins, avoid red candles and bears, and try to beat your best score. Three collisions end the run. The score screen offers a Telegram share link.
 
-The **WORLD** record is stored by the PiggyBank score API. A run receives a random server seed, and the API replays its jump timings using the same fixed-step rules before it updates the record. **MY BEST** stays on the current device. If the API is unavailable, the game still runs casually and labels the result unverified. Automated play remains possible; this system prevents a browser-edited score from being accepted as the world record.
+The **WORLD** record and public top-ten board are stored by the PiggyBank score API. Each browser gets a private player key, and players can add their public display name after a verified run. A generated Piggy name appears until they do. The board shows each player's best verified run. A run receives a random server seed, and the API replays its jump timings using the same fixed-step rules before it updates the board. **MY BEST** stays on the current device. If the API is unavailable, the game still runs casually and labels the result unverified. Automated play remains possible; this system prevents a browser-edited score from being accepted as a record.
 
 ## Local preview
 

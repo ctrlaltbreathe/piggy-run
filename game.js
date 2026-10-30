@@ -16,6 +16,75 @@
   try { best = Number(localStorage.getItem('piggy-run-best')) || 0; } catch (_) {}
   bestLabel.textContent = String(best);
   let worldBest = null;
+  let player = null;
+  try {
+    const saved = JSON.parse(localStorage.getItem('piggy-run-player') || 'null');
+    if (saved && typeof saved.id === 'string' && typeof saved.key === 'string') player = saved;
+  } catch (_) {}
+
+  function setPlayer(value) {
+    if (!value || typeof value.id !== 'string' || typeof value.name !== 'string') return;
+    const key = typeof value.key === 'string' ? value.key : player?.id === value.id ? player.key : null;
+    if (!key) return;
+    player = { id: value.id, key, name: value.name };
+    try { localStorage.setItem('piggy-run-player', JSON.stringify(player)); } catch (_) {}
+    $('player-name').textContent = 'You are ' + player.name;
+    $('player-name-input').value = player.name.startsWith('Piggy ') ? '' : player.name;
+  }
+
+  function setLeaders(rows) {
+    if (!Array.isArray(rows)) return;
+    const list = $('leaders-list');
+    list.textContent = '';
+    if (rows.length === 0) {
+      const empty = document.createElement('li');
+      empty.textContent = 'Be the first verified runner!';
+      list.append(empty);
+      return;
+    }
+    rows.slice(0, 10).forEach((row, index) => {
+      const item = document.createElement('li');
+      if (row.id === player?.id) item.classList.add('mine');
+      for (const [className, value] of [['rank', '#' + (index + 1)], ['name', row.name], ['score', String(row.score)]]) {
+        const span = document.createElement('span');
+        span.className = className;
+        span.textContent = value;
+        item.append(span);
+      }
+      list.append(item);
+    });
+  }
+
+  const leadersPanel = $('leaders-panel');
+  let leadersOpener = null;
+  function openLeaders(event) {
+    leadersOpener = event.currentTarget;
+    leadersPanel.classList.remove('hidden');
+    $('leaders-close').focus();
+  }
+  function closeLeaders() {
+    leadersPanel.classList.add('hidden');
+    leadersOpener?.focus();
+  }
+  for (const id of ['leaders-button', 'show-leaders-start', 'show-leaders-over']) $(id).addEventListener('click', openLeaders);
+  $('leaders-close').addEventListener('click', closeLeaders);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !leadersPanel.classList.contains('hidden')) closeLeaders(); });
+  if (player?.name) $('player-name').textContent = 'You are ' + player.name;
+  if (player?.name && !player.name.startsWith('Piggy ')) $('player-name-input').value = player.name;
+  $('save-player-name').addEventListener('click', async () => {
+    if (!player) return;
+    const button = $('save-player-name');
+    const status = $('name-status');
+    button.disabled = true;
+    status.textContent = 'Saving name…';
+    try {
+      const result = await request('rename', { playerId: player.id, playerKey: player.key, name: $('player-name-input').value });
+      setPlayer(result.player);
+      setLeaders(result.leaders);
+      status.textContent = 'Saved! Your score appears as ' + player.name + '.';
+    } catch (error) { status.textContent = error.message || 'Could not save name.'; }
+    finally { button.disabled = false; }
+  });
 
   async function request(action, data = {}) {
     const controller = new AbortController();
@@ -39,8 +108,9 @@
     }
   }
 
-  request('status').then(result => setWorldBest(result.best)).catch(() => {
+  request('status').then(result => { setWorldBest(result.best); setLeaders(result.leaders); }).catch(() => {
     $('record-status').textContent = 'Record service unavailable. You can still play for fun.';
+    $('leaders-list').textContent = 'Scores are temporarily unavailable.';
   });
 
   function sound(frequency, duration, kind = 'sine', endFrequency = frequency) {
@@ -152,10 +222,12 @@
       button.disabled = true;
       let seed, token = null;
       try {
-        const result = await request('start');
+        const result = await request('start', player ? { playerId: player.id, playerKey: player.key } : {});
         seed = result.seed;
         token = result.token;
         setWorldBest(result.best);
+        setPlayer(result.player);
+        setLeaders(result.leaders);
       } catch (_) {
         seed = crypto.getRandomValues(new Uint32Array(1))[0];
         $('record-status').textContent = 'Record service unavailable. You can still play for fun.';
@@ -169,6 +241,8 @@
       this.accumulator = 0;
       this.renderIndex = 0;
       this.state = 'running';
+      leadersPanel.classList.add('hidden');
+      $('name-controls').classList.add('hidden');
       this.player.clearTint().setAlpha(1).setAngle(0).setPosition(Math.max(85, this.scale.width * .2), this.groundY - 41);
       this.runTween.resume();
       startPanel.classList.add('hidden');
@@ -227,10 +301,13 @@
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
       const verification = $('verification-status');
       verification.textContent = this.runToken ? 'Checking this run with the server…' : 'Casual run. Record service unavailable.';
+      $('name-controls').classList.add('hidden');
       if (this.runToken) {
         request('finish', { token: this.runToken, ticks: this.run.tick, jumps: this.jumps }).then(result => {
           setWorldBest(result.best);
+          setLeaders(result.leaders);
           verification.textContent = result.newBest ? 'Verified new world record! 🏆' : 'Score verified by the PiggyBank server.';
+          $('name-controls').classList.remove('hidden');
         }).catch(() => { verification.textContent = 'Run could not be verified. Your personal best is saved on this device.'; });
       }
       const url = new URL('https://piggybankbnb.com/piggy-run/');

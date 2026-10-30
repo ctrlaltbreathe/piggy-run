@@ -1,0 +1,52 @@
+.leader-link {
+  display: block;
+  width: 100%;
+  margin: 13px 0 3px;
+  padding: 7px 4px;
+  border: 0;
+  background: transparent;
+  color: #b6ffe9;
+  font: 900 12px Trebuchet MS, Arial, sans-serif;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+#gameover-panel { max-height: calc(100dvh - 20px); overflow-y: auto; }
+.name-controls { margin: 12px 0; text-align: left; }
+.name-controls.hidden { display: none; }
+.name-controls label { display: block; margin-bottom: 5px; color: #b6ffe9; font-size: 10px; font-weight: 900; letter-spacing: .08em; }
+.name-row { display: flex; gap: 6px; }
+.name-row input {
+  min-width: 0; flex: 1; height: 40px; padding: 0 10px;
+  border: 1px solid #ffffff70; border-radius: 9px;
+  background: #071733; color: white; font: 700 15px Trebuchet MS, Arial, sans-serif;
+}
+.name-row button {
+  padding: 0 10px; border: 1px solid #58e6c0; border-radius: 9px;
+  background: #1d806d; color: white; font: 900 10px Trebuchet MS, Arial, sans-serif;
+  cursor: pointer;
+}
+.name-row input:focus-visible, .name-row button:focus-visible { outline: 3px solid #ffd34f; outline-offset: 2px; }
+.name-controls small { display: block; margin-top: 5px; color: #a7bbd7; font-size: 10px; }
+.leader-link:focus-visible, .leaders-close:focus-visible { outline: 3px solid #ffd34f; outline-offset: 2px; }
+.leaders-panel { z-index: 8; max-height: calc(100dvh - 24px); overflow-y: auto; }
+.leaders-panel h2 { margin-bottom: 8px; }
+.leaders-close {
+  position: absolute; top: 10px; right: 14px; width: 34px; height: 34px;
+  border: 1px solid #ffffff55; border-radius: 50%; background: #ffffff15;
+  color: white; font-size: 25px; cursor: pointer;
+}
+.leaders-panel .player-name { margin: 4px 0 14px; font-size: 13px !important; }
+.leaders-list { margin: 0; padding: 0; list-style: none; text-align: left; }
+.leaders-list li {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px;
+  align-items: center; min-height: 35px; padding: 5px 8px;
+  border-bottom: 1px solid #ffffff1f; border-radius: 7px;
+  font-size: 13px; font-weight: 700;
+}
+.leaders-list li:first-child { color: #ffd34f; }
+.leaders-list li.mine { background: #30bd9b30; outline: 1px solid #58e6c060; }
+.leaders-list .rank { color: #a7bbd7; }
+.leaders-list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leaders-list .score { color: #ffd34f; font-variant-numeric: tabular-nums; }
+#app.playing #leaders-button { display: none; }
+@media (max-width: 600px) { #leaders-button { display: none; } }
