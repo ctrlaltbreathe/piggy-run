@@ -166,7 +166,7 @@
     try {
       const response = await fetch(API, {
         method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, rulesVersion: 5, ...data }), signal: controller.signal
+        body: JSON.stringify({ action, rulesVersion: 6, ...data }), signal: controller.signal
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Record service unavailable');
@@ -385,6 +385,10 @@
       }
       this.objects = this.objects.filter(({ event, image }) => {
         const remaining = event.tick * 1000 - this.run.distance1000;
+        if (event.stomped) {
+          this.tweens.add({ targets: image, scaleY: image.scaleY * .2, alpha: 0, duration: 200, onComplete: () => image.destroy() });
+          return false;
+        }
         if (event.collected) {
           this.tweens.add({ targets: image, y: image.y - 24, alpha: 0, duration: 170, onComplete: () => image.destroy() });
           return false;
@@ -453,6 +457,11 @@
       while (this.accumulator >= rules.STEP_MS && !this.run.over) {
         this.accumulator -= rules.STEP_MS;
         const result = rules.step(this.run, this.jumps[this.jumps.length - 1] === this.run.tick + 1);
+        if (result.stomp) {
+          sound(320, .16, 'triangle', 900);
+          const stompText = this.add.text(this.player.x, this.player.y - 65, 'BEAR STOMP +50', { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffdc72', stroke: '#172344', strokeThickness: 4 }).setOrigin(.5).setDepth(9);
+          this.tweens.add({ targets: stompText, y: stompText.y - 35, alpha: 0, duration: 850, onComplete: () => stompText.destroy() });
+        }
         if (result.pickup) {
           sound(result.pickup >= 100 ? 1080 : 850, .12, 'sine', result.pickup >= 100 ? 1500 : 1250);
           const bonus = this.add.text(this.player.x + 12, this.player.y - 48, '+' + result.pickup, {

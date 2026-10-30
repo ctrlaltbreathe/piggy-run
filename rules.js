@@ -46,7 +46,7 @@
   }
 
   function score(state) {
-    return Math.floor(state.tick * 9 / 50) + state.coins * 25 + state.bagBonus;
+    return Math.floor(state.tick * 9 / 50) + state.coins * 25 + state.bagBonus + (state.stompBonus || 0);
   }
 
   function level(state) {
@@ -59,11 +59,12 @@
     state.tick++;
     state.distance1000 += 1000 + (oldLevel - 1) * 60;
     if (jump && state.y10 === 0) state.vy10 = -138;
+    const previousY10 = state.y10;
     state.y10 += state.vy10;
     state.vy10 += 6;
     if (state.y10 >= 0) { state.y10 = 0; state.vy10 = 0; }
     if (state.immune > 0) state.immune--;
-    let hit = false, pickup = 0;
+    let hit = false, pickup = 0, stomp = false;
     while (state.eventIndex < state.events.length && (state.events[state.eventIndex].tick + OVERLAP_TICKS) * 1000 < state.distance1000) state.eventIndex++;
     for (let i = state.eventIndex; i < state.events.length && (state.events[i].tick - OVERLAP_TICKS) * 1000 <= state.distance1000; i++) {
       const event = state.events[i];
@@ -76,6 +77,10 @@
         event.used = true; event.collected = true; state.coins++; pickup += 25;
       } else if (event.type === 'bag' && state.y10 <= -100 && state.y10 >= -1200) {
         event.used = true; event.collected = true; state.coins++; state.bagBonus += 75; pickup += 100;
+      } else if (event.type === 'bear' && state.vy10 > 0 && previousY10 <= -620 && state.y10 >= -620) {
+        event.used = true; event.stomped = true;
+        state.stompBonus = (state.stompBonus || 0) + 50;
+        state.y10 = -620; state.vy10 = -90; stomp = true;
       } else if (!event.type.startsWith('coin') && event.type !== 'bag' && (event.type === 'drone' ? state.y10 <= -350 && state.y10 >= -1550 : state.y10 > (event.type === 'bear' ? -620 : -590))) {
         event.used = true;
         if (state.immune === 0) {
@@ -86,7 +91,7 @@
         }
       }
     }
-    return { hit, pickup, levelUp: level(state) > oldLevel, over: state.over };
+    return { hit, pickup, stomp, levelUp: level(state) > oldLevel, over: state.over };
   }
 
   const api = { STEP_MS, MAX_TICKS, OVERLAP_TICKS, events, create, score, level, step };
