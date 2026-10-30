@@ -458,7 +458,7 @@
     return;
   }
   new Phaser.Game({
-    type: Phaser.AUTO,
+    type: Phaser.CANVAS,
     parent: 'game',
     backgroundColor: '#142441',
     scale: { mode: Phaser.Scale.RESIZE, width: app.clientWidth, height: app.clientHeight, autoCenter: Phaser.Scale.CENTER_BOTH },
