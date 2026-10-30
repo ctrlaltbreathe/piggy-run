@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#10172f">
+  <meta name="description" content="Piggy Run: jump, collect USDT coins and dodge the crypto market. A free PiggyBank arcade game.">
+  <meta property="og:title" content="Piggy Run">
+  <meta property="og:description" content="How far can your golden piggy run? Play the free PiggyBank arcade game.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/piggy-runner.png">
+  <title>Piggy Run · PiggyBank</title>
+  <link rel="icon" href="assets/piggy-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="vendor/phaser.min.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <main id="app">
+    <div id="game" aria-label="Piggy Run game area"></div>
+    <header class="hud" aria-live="off">
+      <div class="brand"><img src="assets/piggy-icon.png" alt=""><span>PIGGY <strong>RUN</strong></span></div>
+      <div class="stats"><div class="stat"><small>SCORE</small><strong id="score">0</strong></div><div class="stat"><small>BEST</small><strong id="best">0</strong></div><div class="lives" aria-label="3 lives" id="lives">♥ ♥ ♥</div></div>
+      <button id="sound" class="icon-button" type="button" aria-label="Mute sound" title="Toggle sound">♫</button>
+    </header>
+    <section class="panel" id="start-panel" aria-labelledby="start-title">
+      <p class="eyebrow">PIGGYBANK ARCADE</p>
+      <h1 id="start-title">PIGGY <em>RUN</em></h1>
+      <p>Run the market. Grab USDT. Dodge the dips.</p>
+      <div class="instructions"><span>SPACE or TAP <b>↑</b> JUMP</span><span>♥ ♥ ♥ THREE LIVES</span></div>
+      <button class="primary-button" id="start" type="button">LET'S RUN <span>→</span></button>
+      <small>Just for fun. No wallets or rewards.</small>
+    </section>
+    <section class="panel hidden" id="gameover-panel" aria-labelledby="gameover-title">
+      <p class="eyebrow">RUN COMPLETE</p>
+      <h2 id="gameover-title">GAME <em>OVER</em></h2>
+      <p class="final-score">SCORE <strong id="final-score">0</strong></p>
+      <p id="best-message">Nice run!</p>
+      <button class="primary-button" id="restart" type="button">RUN AGAIN <span>↻</span></button>
+      <a class="share-button" id="telegram-share" target="_blank" rel="noopener noreferrer" href="#">SHARE ON TELEGRAM ↗</a>
+    </section>
+    <div id="tap-hint" aria-hidden="true">TAP ANYWHERE TO JUMP ↑</div>
+  </main>
+</body>
+</html>
