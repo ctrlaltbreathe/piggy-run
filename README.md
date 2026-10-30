@@ -14,6 +14,8 @@ The current rules increase movement speed by 6% every 2,000 points, up to 48% fa
 
 ## Local preview
 
+Generated twilight city art scrolls left at 6 pixels per second, with a nearer silhouette layer at 14 pixels per second. The image is mirrored into a repeating runtime texture to avoid hard seams. Asset and generation prompt: assets/crypto-city-v1.png and assets/crypto-city-v1.prompt.txt. Gameplay and scoring are unaffected.
+
 The flying hazard is now a purple crypto UFO. Jump into its gold underside to burst it for 75 points; side contact costs a life and passing below is safe. Replay version seven retains existing scores.
 
 Landing on a bear from above awards 50 points and a small bounce. Sideways and rising contact cost a life. Bear-stomp replay version six uses the existing version-five scoreboard and device best.

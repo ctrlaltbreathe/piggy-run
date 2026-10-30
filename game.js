@@ -218,6 +218,7 @@
     constructor() { super('runner'); }
     preload() {
       this.load.image('pig', 'assets/piggy-runner.png');
+      this.load.image('city-art', 'assets/crypto-city-v1.png');
     }
     create() {
       this.state = 'ready';
@@ -227,6 +228,15 @@
       this.accumulator = 0;
       this.objects = [];
       this.makeTextures();
+      this.sceneryTime = 0;
+      if (this.textures.exists('city-art')) {
+        const art = this.textures.get('city-art').getSourceImage();
+        const loop = this.textures.createCanvas('city-loop', art.width * 2, art.height);
+        const ctx = loop.getContext();
+        ctx.drawImage(art, 0, 0);
+        ctx.save(); ctx.translate(art.width * 2, 0); ctx.scale(-1, 1); ctx.drawImage(art, 0, 0); ctx.restore();
+        loop.refresh();
+      }
       this.drawWorld();
       this.createPlayer();
       this.input.on('pointerdown', () => this.jump());
@@ -300,19 +310,21 @@
       const w = this.scale.width, h = this.scale.height;
       this.groundY = h - Math.max(95, h * 0.18);
       if (this.background) this.background.destroy();
-      this.background = this.add.graphics().setDepth(-10);
+      if (this.cityBackdrop) this.cityBackdrop.destroy();
+      if (this.nearScenery) this.nearScenery.destroy();
+      if (this.textures.exists('city-loop')) {
+        this.cityBackdrop = this.add.tileSprite(0, 0, w, this.groundY, 'city-loop').setOrigin(0).setDepth(-10);
+        const source = this.textures.get('city-loop').getSourceImage();
+        this.cityBackdrop.setTileScale(this.groundY / source.height);
+      }
+      this.background = this.add.graphics().setDepth(-8);
       const bg = this.background;
-      bg.fillGradientStyle(0x102445, 0x102445, 0x4f668b, 0x4f668b).fillRect(0, 0, w, h);
-      bg.fillStyle(0xfbc767, 0.26).fillCircle(w * .77, h * .29, Math.min(w, h) * .13);
-      bg.fillStyle(0xffdb8a, 0.38).fillCircle(w * .77, h * .29, Math.min(w, h) * .08);
-      // Distant price chart and skyline provide movement cues without affecting play.
-      bg.lineStyle(3, 0x70cdbf, .18).beginPath().moveTo(0, h * .48);
-      for (let x = 0; x <= w; x += 70) bg.lineTo(x, h * (.43 + .055 * Math.sin(x / 69)));
-      bg.strokePath();
-      bg.fillStyle(0x243a61, .8);
-      for (let x = 0; x < w; x += 57) {
-        const height = 45 + ((x * 7) % 85);
-        bg.fillRect(x, this.groundY - height, 43, height);
+      if (!this.cityBackdrop) bg.fillStyle(0x152b4a).fillRect(0, 0, w, h);
+      this.nearScenery = this.add.graphics().setDepth(-9);
+      this.nearScenery.fillStyle(0x10243c, .55);
+      for (let x = 0; x < w + 320; x += 80) {
+        const height = [22, 40, 28, 50][(x / 80) % 4];
+        this.nearScenery.fillRect(x, this.groundY - height, 62, height);
       }
       bg.fillStyle(0x1a2a4a).fillRect(0, this.groundY, w, h - this.groundY);
       bg.fillStyle(0x75e2c5).fillRect(0, this.groundY, w, 5);
@@ -460,6 +472,9 @@
       this.player.y = this.groundY - 41 + (this.run?.y10 || 0) / 10;
     }
     update(_, delta) {
+      this.sceneryTime += Math.min(delta, 100) / 1000;
+      if (this.cityBackdrop) this.cityBackdrop.tilePositionX = this.sceneryTime * 6 / this.cityBackdrop.tileScaleX;
+      if (this.nearScenery) this.nearScenery.x = -(this.sceneryTime * 14 % 320);
       if (this.state !== 'running') return;
       this.accumulator += Math.min(delta, 100);
       while (this.accumulator >= rules.STEP_MS && !this.run.over) {
