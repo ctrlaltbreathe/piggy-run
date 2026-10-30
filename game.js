@@ -208,7 +208,7 @@
       }
       $('final-score').textContent = String(score);
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
-      const url = new URL(location.href);
+      const url = new URL('https://piggybankbnb.com/piggy-run/');
       url.hash = '';
       url.search = '';
       $('telegram-share').href = 'https://t.me/share/url?url=' + encodeURIComponent(url.href) + '&text=' + encodeURIComponent('I scored ' + score + ' in Piggy Run! Can you beat me? 🐷🪙');
