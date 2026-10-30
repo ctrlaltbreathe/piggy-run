@@ -48,5 +48,6 @@
 .leaders-list .rank { color: #a7bbd7; }
 .leaders-list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .leaders-list .score { color: #ffd34f; font-variant-numeric: tabular-nums; }
+.leaders-panel .previous-best { margin: 14px 0 0; color: #a7bbd7; font-size: 12px !important; }
 #app.playing #leaders-button { display: none; }
 @media (max-width: 600px) { #leaders-button { display: none; } }

@@ -13,7 +13,7 @@
   let muted = false;
   let audioContext;
   let best = 0;
-  try { best = Number(localStorage.getItem('piggy-run-best')) || 0; } catch (_) {}
+  try { best = Number(localStorage.getItem('piggy-run-best-v2')) || 0; } catch (_) {}
   bestLabel.textContent = String(best);
   let worldBest = null;
   let player = null;
@@ -61,7 +61,7 @@
     leadersOpener = event.currentTarget;
     leadersPanel.classList.remove('hidden');
     $('leaders-close').focus();
-    request('status').then(result => { setWorldBest(result.best); setLeaders(result.leaders); }).catch(() => {});
+    request('status').then(result => { setWorldBest(result.best); setPreviousBest(result.previousBest); setLeaders(result.leaders); }).catch(() => {});
   }
   function closeLeaders() {
     leadersPanel.classList.add('hidden');
@@ -109,7 +109,15 @@
     }
   }
 
-  request('status').then(result => { setWorldBest(result.best); setLeaders(result.leaders); }).catch(() => {
+  function setPreviousBest(value) {
+    if (Number.isSafeInteger(value) && value > 0) {
+      $('previous-best').hidden = false;
+      $('previous-best').textContent = 'Previous game rules record: ' + value;
+      $('record-status').textContent = 'New collision rules are live. The earlier record is saved in Top 10.';
+    }
+  }
+
+  request('status').then(result => { setWorldBest(result.best); setPreviousBest(result.previousBest); setLeaders(result.leaders); }).catch(() => {
     $('record-status').textContent = 'Record service unavailable. You can still play for fun.';
     $('leaders-list').textContent = 'Scores are temporarily unavailable.';
   });
@@ -227,6 +235,7 @@
         seed = result.seed;
         token = result.token;
         setWorldBest(result.best);
+        setPreviousBest(result.previousBest);
         setPlayer(result.player);
         setLeaders(result.leaders);
       } catch (_) {
@@ -262,7 +271,7 @@
     }
     renderObjects() {
       const playerX = Math.max(85, this.scale.width * .2);
-      const stepDistance = (this.scale.width - playerX + 50) / 70;
+      const stepDistance = 6;
       while (this.renderIndex < this.run.events.length && this.run.events[this.renderIndex].tick - this.run.tick <= 70) {
         const event = this.run.events[this.renderIndex++];
         const coin = event.type.startsWith('coin');
@@ -273,8 +282,12 @@
       }
       this.objects = this.objects.filter(({ event, image }) => {
         const remaining = event.tick - this.run.tick;
-        if (remaining < -5) { image.destroy(); return false; }
+        if (event.collected) {
+          this.tweens.add({ targets: image, y: image.y - 24, alpha: 0, duration: 170, onComplete: () => image.destroy() });
+          return false;
+        }
         image.x = playerX + remaining * stepDistance;
+        if (image.x < -image.displayWidth / 2 - 12) { image.destroy(); return false; }
         if (event.type.startsWith('coin')) image.angle = Math.sin(this.run.tick / 8 + event.tick / 12) * 9;
         return true;
       });
@@ -296,7 +309,7 @@
       const record = score > best;
       if (record) {
         best = score;
-        try { localStorage.setItem('piggy-run-best', String(best)); } catch (_) {}
+        try { localStorage.setItem('piggy-run-best-v2', String(best)); } catch (_) {}
       }
       $('final-score').textContent = String(score);
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
@@ -306,6 +319,7 @@
       if (this.runToken) {
         request('finish', { token: this.runToken, ticks: this.run.tick, jumps: this.jumps }).then(result => {
           setWorldBest(result.best);
+          setPreviousBest(result.previousBest);
           setLeaders(result.leaders);
           verification.textContent = result.newBest ? 'Verified new world record! 🏆' : 'Score verified by the PiggyBank server.';
           $('name-controls').classList.remove('hidden');

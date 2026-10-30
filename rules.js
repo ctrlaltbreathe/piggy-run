@@ -3,6 +3,7 @@
 
   const STEP_MS = 20;
   const MAX_TICKS = 30000;
+  const OVERLAP_TICKS = 10;
 
   function events(seed) {
     let value = seed >>> 0;
@@ -42,23 +43,28 @@
     if (state.y10 >= 0) { state.y10 = 0; state.vy10 = 0; }
     if (state.immune > 0) state.immune--;
     let hit = false, coin = false;
-    while (state.eventIndex < state.events.length && state.events[state.eventIndex].tick === state.tick) {
-      const type = state.events[state.eventIndex++].type;
-      if (type === 'coin-low' && state.y10 <= -500 && state.y10 >= -1500) {
-        state.coins++; coin = true;
-      } else if (type === 'coin-high' && state.y10 <= -1050 && state.y10 >= -1900) {
-        state.coins++; coin = true;
-      } else if ((type === 'candle' || type === 'bear') && state.y10 > (type === 'bear' ? -620 : -550) && state.immune === 0) {
-        state.lives--;
-        state.immune = 68;
-        hit = true;
-        if (state.lives === 0) state.over = true;
+    while (state.eventIndex < state.events.length && state.events[state.eventIndex].tick + OVERLAP_TICKS < state.tick) state.eventIndex++;
+    for (let i = state.eventIndex; i < state.events.length && state.events[i].tick - OVERLAP_TICKS <= state.tick; i++) {
+      const event = state.events[i];
+      if (event.used) continue;
+      if (event.type === 'coin-low' && state.y10 <= -100 && state.y10 >= -980) {
+        event.used = true; event.collected = true; state.coins++; coin = true;
+      } else if (event.type === 'coin-high' && state.y10 <= -620 && state.y10 >= -1500) {
+        event.used = true; event.collected = true; state.coins++; coin = true;
+      } else if ((event.type === 'candle' || event.type === 'bear') && state.y10 > (event.type === 'bear' ? -620 : -590)) {
+        event.used = true;
+        if (state.immune === 0) {
+          state.lives--;
+          state.immune = 68;
+          hit = true;
+          if (state.lives === 0) { state.over = true; break; }
+        }
       }
     }
     return { hit, coin, over: state.over };
   }
 
-  const api = { STEP_MS, MAX_TICKS, events, create, score, step };
+  const api = { STEP_MS, MAX_TICKS, OVERLAP_TICKS, events, create, score, step };
   if (typeof module === 'object' && module.exports) module.exports = api;
   root.PiggyRunRules = api;
 })(typeof globalThis === 'object' ? globalThis : this);
