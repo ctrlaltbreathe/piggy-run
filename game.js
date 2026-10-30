@@ -309,7 +309,7 @@
     drawWorld() {
       const w = this.scale.width, h = this.scale.height;
       this.playScale = w < h ? .82 : 1;
-      this.groundY = h - Math.max(95, h * 0.18);
+      this.groundY = h - Math.max(95, h * (w < h ? .27 : .18));
       if (this.background) this.background.destroy();
       if (this.cityBackdrop) this.cityBackdrop.destroy();
       if (this.nearScenery) this.nearScenery.destroy();
