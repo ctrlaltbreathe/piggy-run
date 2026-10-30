@@ -15,7 +15,7 @@
   let muted = false;
   let audioContext;
   let best = 0;
-  try { best = Number(localStorage.getItem('piggy-run-best-v4')) || 0; } catch (_) {}
+  try { best = Number(localStorage.getItem('piggy-run-best-v5')) || 0; } catch (_) {}
   bestLabel.textContent = String(best);
   let worldBest = null;
   let player = null;
@@ -160,7 +160,7 @@
     try {
       const response = await fetch(API, {
         method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, rulesVersion: 4, ...data }), signal: controller.signal
+        body: JSON.stringify({ action, rulesVersion: 5, ...data }), signal: controller.signal
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Record service unavailable');
@@ -180,7 +180,7 @@
     if (Number.isSafeInteger(value) && value > 0) {
       $('previous-best').hidden = false;
       $('previous-best').textContent = 'Previous game rules record: ' + value;
-      $('record-status').textContent = 'Coin arcs are live. The earlier record remains archived.';
+      $('record-status').textContent = 'New pace and hazards are live. The earlier record remains archived.';
     }
   }
 
@@ -272,6 +272,22 @@
       g.lineStyle(3, 0xc8ffdd).strokeCircle(29, 28, 22);
       g.fillStyle(0xeafff2).fillRect(16, 16, 27, 6).fillRect(26, 21, 7, 24).fillEllipse(29, 27, 25, 5);
       g.generateTexture('coin', 62, 62).clear();
+      // A larger USDT bag is worth four regular coins.
+      g.fillStyle(0x176a59).fillRoundedRect(19, 3, 29, 12, 4);
+      g.fillStyle(0x2de3a4).fillTriangle(9, 15, 57, 15, 33, 3);
+      g.fillStyle(0x158169).fillRoundedRect(4, 18, 59, 48, 16);
+      g.fillStyle(0x46e9ac).fillRoundedRect(8, 19, 50, 43, 14);
+      g.lineStyle(3, 0xd0ffdf).strokeRoundedRect(10, 22, 46, 36, 12);
+      g.fillStyle(0xeafff2).fillRect(21, 34, 24, 5).fillRect(30, 39, 6, 13).fillEllipse(33, 35, 22, 5);
+      g.generateTexture('bag', 68, 70).clear();
+      // Flying red candle drone: passing underneath is safe.
+      g.lineStyle(4, 0xff8a93).lineBetween(7, 10, 66, 10);
+      g.lineStyle(4, 0xff8a93).lineBetween(14, 7, 14, 24).lineBetween(59, 7, 59, 24);
+      g.fillStyle(0x792039).fillRoundedRect(8, 20, 59, 34, 10);
+      g.fillStyle(0xef4d64).fillRoundedRect(10, 19, 55, 31, 9);
+      g.fillStyle(0xffb4b7).fillRect(21, 26, 8, 16);
+      g.fillStyle(0xffd3d1).fillTriangle(42, 30, 57, 30, 49, 42);
+      g.generateTexture('drone', 76, 62).clear();
       g.destroy();
     }
     drawWorld() {
@@ -339,6 +355,7 @@
       gameoverPanel.classList.add('hidden');
       app.classList.add('playing');
       this.updateHud();
+      $('tap-hint').textContent = 'TAP TO JUMP ↑ · PACE 1';
       sound(440, .08, 'triangle', 680);
     }
     jump() {
@@ -351,24 +368,25 @@
     }
     renderObjects() {
       const playerX = Math.max(85, this.scale.width * .2);
-      const stepDistance = 6;
-      while (this.renderIndex < this.run.events.length && this.run.events[this.renderIndex].tick - this.run.tick <= 70) {
+      const stepDistance = 0.006;
+      while (this.renderIndex < this.run.events.length && this.run.events[this.renderIndex].tick * 1000 - this.run.distance1000 <= 70000) {
         const event = this.run.events[this.renderIndex++];
-        const coin = event.type.startsWith('coin');
-        const size = coin ? [43, 43] : event.type === 'bear' ? [62, 62] : event.type === 'rug' ? [62, 59] : [49, 59];
-        const y = coin ? this.groundY - (event.type === 'coin-high' ? 147 : event.type === 'coin-mid' ? 121 : 95) : this.groundY - size[1] / 2 + 1;
-        const image = this.add.image(0, y, coin ? 'coin' : event.type).setDisplaySize(size[0], size[1]).setDepth(coin ? 2 : 3);
+        const coin = event.type.startsWith('coin') || event.type === 'bag';
+        const size = event.type === 'bag' ? [53, 55] : coin ? [43, 43] : event.type === 'drone' ? [66, 54] : event.type === 'bear' ? [62, 62] : event.type === 'rug' ? [62, 59] : [49, 59];
+        const y = event.type === 'bag' ? this.groundY - 102 : event.type === 'drone' ? this.groundY - 138 : coin ? this.groundY - (event.type === 'coin-high' ? 147 : event.type === 'coin-mid' ? 121 : 95) : this.groundY - size[1] / 2 + 1;
+        const image = this.add.image(0, y, event.type.startsWith('coin') ? 'coin' : event.type).setDisplaySize(size[0], size[1]).setDepth(coin ? 2 : 3);
         this.objects.push({ event, image });
       }
       this.objects = this.objects.filter(({ event, image }) => {
-        const remaining = event.tick - this.run.tick;
+        const remaining = event.tick * 1000 - this.run.distance1000;
         if (event.collected) {
           this.tweens.add({ targets: image, y: image.y - 24, alpha: 0, duration: 170, onComplete: () => image.destroy() });
           return false;
         }
         image.x = playerX + remaining * stepDistance;
         if (image.x < -image.displayWidth / 2 - 12) { image.destroy(); return false; }
-        if (event.type.startsWith('coin')) image.angle = Math.sin(this.run.tick / 8 + event.tick / 12) * 9;
+        if (event.type.startsWith('coin') || event.type === 'bag') image.angle = Math.sin(this.run.tick / 8 + event.tick / 12) * 9;
+        if (event.type === 'drone') image.y = this.groundY - 138 + Math.sin(this.run.tick / 5 + event.tick) * 4;
         return true;
       });
     }
@@ -389,7 +407,7 @@
       const record = score > best;
       if (record) {
         best = score;
-        try { localStorage.setItem('piggy-run-best-v4', String(best)); } catch (_) {}
+        try { localStorage.setItem('piggy-run-best-v5', String(best)); } catch (_) {}
       }
       $('final-score').textContent = String(score);
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
@@ -429,12 +447,21 @@
       while (this.accumulator >= rules.STEP_MS && !this.run.over) {
         this.accumulator -= rules.STEP_MS;
         const result = rules.step(this.run, this.jumps[this.jumps.length - 1] === this.run.tick + 1);
-        if (result.coin) {
-          sound(850, .12, 'sine', 1250);
-          const bonus = this.add.text(this.player.x + 12, this.player.y - 48, '+25', {
+        if (result.pickup) {
+          sound(result.pickup >= 100 ? 1080 : 850, .12, 'sine', result.pickup >= 100 ? 1500 : 1250);
+          const bonus = this.add.text(this.player.x + 12, this.player.y - 48, '+' + result.pickup, {
             fontFamily: 'Arial, sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#94ffd3', stroke: '#123c48', strokeThickness: 4
           }).setDepth(8);
           this.tweens.add({ targets: bonus, y: bonus.y - 36, alpha: 0, duration: 700, onComplete: () => bonus.destroy() });
+        }
+        if (result.levelUp) {
+          const pace = rules.level(this.run);
+          $('tap-hint').textContent = 'TAP TO JUMP ↑ · PACE ' + pace;
+          const notice = this.add.text(this.scale.width / 2, this.groundY - 210, 'PACE ' + pace + ' · MARKET HEATS UP!', {
+            fontFamily: 'Arial, sans-serif', fontSize: '23px', fontStyle: 'bold', color: '#ffd35f', stroke: '#172344', strokeThickness: 5
+          }).setOrigin(.5).setDepth(9);
+          this.tweens.add({ targets: notice, y: notice.y - 35, alpha: 0, duration: 1300, onComplete: () => notice.destroy() });
+          sound(530, .18, 'triangle', 930);
         }
         if (result.hit) {
           this.cameras.main.shake(140, .006);
