@@ -18,7 +18,15 @@
     let coin = 32 + random() % 24;
     while (obstacle <= MAX_TICKS || coin <= MAX_TICKS) {
       if (coin <= obstacle && coin <= MAX_TICKS) {
-        list.push({ tick: coin, type: random() % 2 ? 'coin-high' : 'coin-low' });
+        const arc = coin >= 100 && coin + 38 < obstacle && coin + 32 <= MAX_TICKS && random() % 5 === 0;
+        if (arc) {
+          for (const [offset, type] of [[0, 'coin-low'], [8, 'coin-mid'], [16, 'coin-high'], [24, 'coin-mid'], [32, 'coin-low']]) {
+            list.push({ tick: coin + offset, type });
+          }
+          coin += 32;
+        } else {
+          list.push({ tick: coin, type: random() % 2 ? 'coin-high' : 'coin-low' });
+        }
         coin += 55 + random() % 25;
       } else if (obstacle <= MAX_TICKS) {
         list.push({ tick: obstacle, type: ['candle', 'bear', 'dip', 'rug'][random() % 4] });
@@ -53,6 +61,8 @@
       const event = state.events[i];
       if (event.used) continue;
       if (event.type === 'coin-low' && state.y10 <= -100 && state.y10 >= -980) {
+        event.used = true; event.collected = true; state.coins++; coin = true;
+      } else if (event.type === 'coin-mid' && state.y10 <= -350 && state.y10 >= -1260) {
         event.used = true; event.collected = true; state.coins++; coin = true;
       } else if (event.type === 'coin-high' && state.y10 <= -620 && state.y10 >= -1500) {
         event.used = true; event.collected = true; state.coins++; coin = true;

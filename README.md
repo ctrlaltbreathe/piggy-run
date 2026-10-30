@@ -8,6 +8,8 @@ Open the published URL on desktop or phone. Press **Space**, **Up**, or tap the 
 
 The **WORLD** record and public top-ten board are stored by the PiggyBank score API. Each browser gets a private player key, and players can add their public display name after a verified run. A generated Piggy name appears until they do. The board shows each player's best verified run. A run receives a random server seed, and the API replays its jump timings using the same fixed-step rules before it updates the board. Spawn times and obstacle types vary by seed. Coins and obstacles use a multi-frame overlap window that matches their visible hitboxes, and missed objects leave the screen before being removed. Scores from previous game rules are preserved; the varied-pattern rules have their own world record and board. **MY BEST** stays on the current device. If the API is unavailable, the game still runs casually and labels the result unverified. Automated play remains possible; this system prevents a browser-edited score from being accepted as a record.
 
+Occasional five-coin arcs can be collected with one well timed jump for 125 coin points. The arc rules use a new verified leaderboard; earlier records remain archived.
+
 ## Local preview
 
 Serve this directory with any static HTTP server, for example python -m http.server 8765, then open http://localhost:8765/.

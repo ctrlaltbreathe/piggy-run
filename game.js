@@ -15,7 +15,7 @@
   let muted = false;
   let audioContext;
   let best = 0;
-  try { best = Number(localStorage.getItem('piggy-run-best-v3')) || 0; } catch (_) {}
+  try { best = Number(localStorage.getItem('piggy-run-best-v4')) || 0; } catch (_) {}
   bestLabel.textContent = String(best);
   let worldBest = null;
   let player = null;
@@ -160,7 +160,7 @@
     try {
       const response = await fetch(API, {
         method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, rulesVersion: 3, ...data }), signal: controller.signal
+        body: JSON.stringify({ action, rulesVersion: 4, ...data }), signal: controller.signal
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Record service unavailable');
@@ -180,7 +180,7 @@
     if (Number.isSafeInteger(value) && value > 0) {
       $('previous-best').hidden = false;
       $('previous-best').textContent = 'Previous game rules record: ' + value;
-      $('record-status').textContent = 'Fresh market patterns are live. The earlier record is saved in Top 10.';
+      $('record-status').textContent = 'Coin arcs are live. The earlier record remains archived.';
     }
   }
 
@@ -356,7 +356,7 @@
         const event = this.run.events[this.renderIndex++];
         const coin = event.type.startsWith('coin');
         const size = coin ? [43, 43] : event.type === 'bear' ? [62, 62] : event.type === 'rug' ? [62, 59] : [49, 59];
-        const y = coin ? this.groundY - (event.type === 'coin-high' ? 147 : 95) : this.groundY - size[1] / 2 + 1;
+        const y = coin ? this.groundY - (event.type === 'coin-high' ? 147 : event.type === 'coin-mid' ? 121 : 95) : this.groundY - size[1] / 2 + 1;
         const image = this.add.image(0, y, coin ? 'coin' : event.type).setDisplaySize(size[0], size[1]).setDepth(coin ? 2 : 3);
         this.objects.push({ event, image });
       }
@@ -389,7 +389,7 @@
       const record = score > best;
       if (record) {
         best = score;
-        try { localStorage.setItem('piggy-run-best-v3', String(best)); } catch (_) {}
+        try { localStorage.setItem('piggy-run-best-v4', String(best)); } catch (_) {}
       }
       $('final-score').textContent = String(score);
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
