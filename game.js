@@ -308,6 +308,7 @@
     }
     drawWorld() {
       const w = this.scale.width, h = this.scale.height;
+      this.playScale = w < h ? .82 : 1;
       this.groundY = h - Math.max(95, h * 0.18);
       if (this.background) this.background.destroy();
       if (this.cityBackdrop) this.cityBackdrop.destroy();
@@ -331,8 +332,8 @@
       bg.fillStyle(0x334763).fillRect(0, this.groundY + 20, w, 4);
     }
     createPlayer() {
-      this.player = this.add.image(Math.max(85, this.scale.width * .2), this.groundY - 41, 'pig');
-      this.player.setDisplaySize(118, 81).setDepth(3);
+      this.player = this.add.image(this.playerX(), this.groundY - 41 * this.playScale, 'pig');
+      this.player.setDisplaySize(118 * this.playScale, 81 * this.playScale).setDepth(3);
       this.runTween = this.tweens.add({ targets: this.player, angle: { from: -3, to: 3 }, duration: 130, yoyo: true, repeat: -1, paused: true });
     }
     async startRun() {
@@ -367,7 +368,7 @@
       this.state = 'running';
       leadersPanel.classList.add('hidden');
       $('name-controls').classList.add('hidden');
-      this.player.clearTint().setAlpha(1).setAngle(0).setPosition(Math.max(85, this.scale.width * .2), this.groundY - 41);
+      this.player.clearTint().setAlpha(1).setAngle(0).setDisplaySize(118 * this.playScale, 81 * this.playScale).setPosition(this.playerX(), this.groundY - 41 * this.playScale);
       this.runTween.resume();
       startPanel.classList.add('hidden');
       gameoverPanel.classList.add('hidden');
@@ -384,15 +385,20 @@
       this.tweens.add({ targets: this.player, scaleX: this.player.scaleX * 1.08, scaleY: this.player.scaleY * .92, duration: 110, yoyo: true });
       sound(450, .16, 'sine', 780);
     }
+    playerX() { return Math.max(85 * this.playScale, this.scale.width * .2); }
+    objectLayout(event) {
+      const coin = event.type.startsWith('coin') || event.type === 'bag';
+      const size = event.type === 'bag' ? [53, 55] : coin ? [43, 43] : event.type === 'drone' ? [66, 54] : event.type === 'bear' ? [62, 62] : event.type === 'rug' ? [62, 59] : [49, 59];
+      const height = event.type === 'bag' ? 102 : event.type === 'drone' ? 138 - Math.sin((this.run?.tick || 0) / 5 + event.tick) * 4 : coin ? (event.type === 'coin-high' ? 147 : event.type === 'coin-mid' ? 121 : 95) : size[1] / 2 - 1;
+      return { coin, width: size[0] * this.playScale, height: size[1] * this.playScale, y: this.groundY - height * this.playScale };
+    }
     renderObjects() {
-      const playerX = Math.max(85, this.scale.width * .2);
-      const stepDistance = 0.006;
+      const playerX = this.playerX();
+      const stepDistance = 0.006 * this.playScale;
       while (this.renderIndex < this.run.events.length && this.run.events[this.renderIndex].tick * 1000 - this.run.distance1000 <= 70000) {
         const event = this.run.events[this.renderIndex++];
-        const coin = event.type.startsWith('coin') || event.type === 'bag';
-        const size = event.type === 'bag' ? [53, 55] : coin ? [43, 43] : event.type === 'drone' ? [66, 54] : event.type === 'bear' ? [62, 62] : event.type === 'rug' ? [62, 59] : [49, 59];
-        const y = event.type === 'bag' ? this.groundY - 102 : event.type === 'drone' ? this.groundY - 138 : coin ? this.groundY - (event.type === 'coin-high' ? 147 : event.type === 'coin-mid' ? 121 : 95) : this.groundY - size[1] / 2 + 1;
-        const image = this.add.image(0, y, event.type.startsWith('coin') ? 'coin' : event.type).setDisplaySize(size[0], size[1]).setDepth(coin ? 2 : 3);
+        const layout = this.objectLayout(event);
+        const image = this.add.image(0, layout.y, event.type.startsWith('coin') ? 'coin' : event.type).setDisplaySize(layout.width, layout.height).setDepth(layout.coin ? 2 : 3);
         this.objects.push({ event, image });
       }
       this.objects = this.objects.filter(({ event, image }) => {
@@ -414,9 +420,10 @@
           return false;
         }
         image.x = playerX + remaining * stepDistance;
+        const layout = this.objectLayout(event);
+        image.setDisplaySize(layout.width, layout.height).setY(layout.y);
         if (image.x < -image.displayWidth / 2 - 12) { image.destroy(); return false; }
         if (event.type.startsWith('coin') || event.type === 'bag') image.angle = Math.sin(this.run.tick / 8 + event.tick / 12) * 9;
-        if (event.type === 'drone') image.y = this.groundY - 138 + Math.sin(this.run.tick / 5 + event.tick) * 4;
         return true;
       });
     }
@@ -468,8 +475,10 @@
     }
     onResize(gameSize) {
       this.drawWorld();
-      this.player.x = Math.max(85, gameSize.width * .2);
-      this.player.y = this.groundY - 41 + (this.run?.y10 || 0) / 10;
+      this.player.setDisplaySize(118 * this.playScale, 81 * this.playScale);
+      this.player.x = this.playerX();
+      this.player.y = this.groundY + (-41 + (this.run?.y10 || 0) / 10) * this.playScale;
+      if (this.run) this.renderObjects();
     }
     update(_, delta) {
       this.sceneryTime += Math.min(delta, 100) / 1000;
@@ -506,7 +515,7 @@
           sound(240, .24, 'sawtooth', 80);
         }
       }
-      this.player.y = this.groundY - 41 + this.run.y10 / 10;
+      this.player.y = this.groundY + (-41 + this.run.y10 / 10) * this.playScale;
       if (this.run.immune > 0) {
         this.player.setTint(0xff6971).setAlpha(Math.floor(this.run.immune / 5) % 2 ? .55 : 1);
       } else this.player.clearTint().setAlpha(1);
