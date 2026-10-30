@@ -6,17 +6,22 @@
   const OVERLAP_TICKS = 10;
 
   function events(seed) {
-    let value = seed >>> 0;
-    const random = () => (value = (Math.imul(value, 1664525) + 1013904223) >>> 0);
+    let value = (seed >>> 0) || 0x6d2b79f5;
+    const random = () => {
+      value ^= value << 13;
+      value ^= value >>> 17;
+      value ^= value << 5;
+      return value >>> 0;
+    };
     const list = [];
-    let obstacle = 65;
-    let coin = 42;
+    let obstacle = 58 + random() % 30;
+    let coin = 32 + random() % 24;
     while (obstacle <= MAX_TICKS || coin <= MAX_TICKS) {
       if (coin <= obstacle && coin <= MAX_TICKS) {
         list.push({ tick: coin, type: random() % 2 ? 'coin-high' : 'coin-low' });
         coin += 55 + random() % 25;
       } else if (obstacle <= MAX_TICKS) {
-        list.push({ tick: obstacle, type: random() % 3 ? 'candle' : 'bear' });
+        list.push({ tick: obstacle, type: ['candle', 'bear', 'dip', 'rug'][random() % 4] });
         obstacle += Math.max(50, 80 - Math.floor(obstacle / 200)) + random() % 20;
       } else {
         break;
@@ -51,7 +56,7 @@
         event.used = true; event.collected = true; state.coins++; coin = true;
       } else if (event.type === 'coin-high' && state.y10 <= -620 && state.y10 >= -1500) {
         event.used = true; event.collected = true; state.coins++; coin = true;
-      } else if ((event.type === 'candle' || event.type === 'bear') && state.y10 > (event.type === 'bear' ? -620 : -590)) {
+      } else if (!event.type.startsWith('coin') && state.y10 > (event.type === 'bear' ? -620 : -590)) {
         event.used = true;
         if (state.immune === 0) {
           state.lives--;

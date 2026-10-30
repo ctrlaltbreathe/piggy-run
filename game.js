@@ -13,7 +13,7 @@
   let muted = false;
   let audioContext;
   let best = 0;
-  try { best = Number(localStorage.getItem('piggy-run-best-v2')) || 0; } catch (_) {}
+  try { best = Number(localStorage.getItem('piggy-run-best-v3')) || 0; } catch (_) {}
   bestLabel.textContent = String(best);
   let worldBest = null;
   let player = null;
@@ -93,7 +93,7 @@
     try {
       const response = await fetch(API, {
         method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...data }), signal: controller.signal
+        body: JSON.stringify({ action, rulesVersion: 3, ...data }), signal: controller.signal
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Record service unavailable');
@@ -113,7 +113,7 @@
     if (Number.isSafeInteger(value) && value > 0) {
       $('previous-best').hidden = false;
       $('previous-best').textContent = 'Previous game rules record: ' + value;
-      $('record-status').textContent = 'New collision rules are live. The earlier record is saved in Top 10.';
+      $('record-status').textContent = 'Fresh market patterns are live. The earlier record is saved in Top 10.';
     }
   }
 
@@ -189,6 +189,16 @@
       g.fillStyle(0x261e30).fillCircle(24, 36, 4).fillCircle(47, 36, 4).fillCircle(35, 51, 5);
       g.fillStyle(0xff9b9c).fillCircle(15, 17, 6).fillCircle(55, 17, 6);
       g.generateTexture('bear', 72, 74).clear();
+      // Downward market arrow and a torn rug add distinct crypto hazards.
+      g.fillStyle(0xa7193c).fillRoundedRect(8, 5, 18, 35, 4);
+      g.fillStyle(0xff5261).fillTriangle(2, 31, 52, 31, 27, 69);
+      g.lineStyle(3, 0xffa2a7).lineBetween(17, 12, 17, 28);
+      g.generateTexture('dip', 55, 72).clear();
+      g.fillStyle(0x472640).fillRoundedRect(4, 31, 59, 31, 5);
+      g.fillStyle(0xb24276).fillRoundedRect(4, 24, 59, 31, 4);
+      g.lineStyle(4, 0xff9ebd).lineBetween(6, 38, 62, 38);
+      for (let x = 9; x < 63; x += 10) g.lineBetween(x, 54, x, 66);
+      g.generateTexture('rug', 68, 70).clear();
       // Teal USDT coin.
       g.fillStyle(0x0c755f).fillCircle(31, 31, 29);
       g.fillStyle(0x3ce3a8).fillCircle(29, 28, 27);
@@ -275,7 +285,7 @@
       while (this.renderIndex < this.run.events.length && this.run.events[this.renderIndex].tick - this.run.tick <= 70) {
         const event = this.run.events[this.renderIndex++];
         const coin = event.type.startsWith('coin');
-        const size = coin ? [43, 43] : event.type === 'bear' ? [62, 62] : [49, 59];
+        const size = coin ? [43, 43] : event.type === 'bear' ? [62, 62] : event.type === 'rug' ? [62, 59] : [49, 59];
         const y = coin ? this.groundY - (event.type === 'coin-high' ? 147 : 95) : this.groundY - size[1] / 2 + 1;
         const image = this.add.image(0, y, coin ? 'coin' : event.type).setDisplaySize(size[0], size[1]).setDepth(coin ? 2 : 3);
         this.objects.push({ event, image });
@@ -309,7 +319,7 @@
       const record = score > best;
       if (record) {
         best = score;
-        try { localStorage.setItem('piggy-run-best-v2', String(best)); } catch (_) {}
+        try { localStorage.setItem('piggy-run-best-v3', String(best)); } catch (_) {}
       }
       $('final-score').textContent = String(score);
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
@@ -343,7 +353,13 @@
       while (this.accumulator >= rules.STEP_MS && !this.run.over) {
         this.accumulator -= rules.STEP_MS;
         const result = rules.step(this.run, this.jumps[this.jumps.length - 1] === this.run.tick + 1);
-        if (result.coin) sound(850, .12, 'sine', 1250);
+        if (result.coin) {
+          sound(850, .12, 'sine', 1250);
+          const bonus = this.add.text(this.player.x + 12, this.player.y - 48, '+25', {
+            fontFamily: 'Arial, sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#94ffd3', stroke: '#123c48', strokeThickness: 4
+          }).setDepth(8);
+          this.tweens.add({ targets: bonus, y: bonus.y - 36, alpha: 0, duration: 700, onComplete: () => bonus.destroy() });
+        }
         if (result.hit) {
           this.cameras.main.shake(140, .006);
           sound(240, .24, 'sawtooth', 80);
