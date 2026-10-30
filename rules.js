@@ -64,7 +64,7 @@
     state.vy10 += 6;
     if (state.y10 >= 0) { state.y10 = 0; state.vy10 = 0; }
     if (state.immune > 0) state.immune--;
-    let hit = false, pickup = 0, stomp = false;
+    let hit = false, pickup = 0, stomp = false, airBurst = false;
     while (state.eventIndex < state.events.length && (state.events[state.eventIndex].tick + OVERLAP_TICKS) * 1000 < state.distance1000) state.eventIndex++;
     for (let i = state.eventIndex; i < state.events.length && (state.events[i].tick - OVERLAP_TICKS) * 1000 <= state.distance1000; i++) {
       const event = state.events[i];
@@ -77,6 +77,10 @@
         event.used = true; event.collected = true; state.coins++; pickup += 25;
       } else if (event.type === 'bag' && state.y10 <= -100 && state.y10 >= -1200) {
         event.used = true; event.collected = true; state.coins++; state.bagBonus += 75; pickup += 100;
+      } else if (event.type === 'drone' && state.vy10 < 0 && previousY10 > -350 && state.y10 <= -350) {
+        event.used = true; event.burst = true;
+        state.stompBonus = (state.stompBonus || 0) + 75;
+        state.vy10 = 30; airBurst = true;
       } else if (event.type === 'bear' && state.vy10 > 0 && previousY10 <= -620 && state.y10 >= -620) {
         event.used = true; event.stomped = true;
         state.stompBonus = (state.stompBonus || 0) + 50;
@@ -91,7 +95,7 @@
         }
       }
     }
-    return { hit, pickup, stomp, levelUp: level(state) > oldLevel, over: state.over };
+    return { hit, pickup, stomp, airBurst, levelUp: level(state) > oldLevel, over: state.over };
   }
 
   const api = { STEP_MS, MAX_TICKS, OVERLAP_TICKS, events, create, score, level, step };

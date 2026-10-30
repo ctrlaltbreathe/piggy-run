@@ -166,7 +166,7 @@
     try {
       const response = await fetch(API, {
         method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, rulesVersion: 6, ...data }), signal: controller.signal
+        body: JSON.stringify({ action, rulesVersion: 7, ...data }), signal: controller.signal
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Record service unavailable');
@@ -286,13 +286,13 @@
       g.lineStyle(3, 0xd0ffdf).strokeRoundedRect(10, 22, 46, 36, 12);
       g.fillStyle(0xeafff2).fillRect(21, 34, 24, 5).fillRect(30, 39, 6, 13).fillEllipse(33, 35, 22, 5);
       g.generateTexture('bag', 68, 70).clear();
-      // Flying red candle drone: passing underneath is safe.
-      g.lineStyle(4, 0xff8a93).lineBetween(7, 10, 66, 10);
-      g.lineStyle(4, 0xff8a93).lineBetween(14, 7, 14, 24).lineBetween(59, 7, 59, 24);
-      g.fillStyle(0x792039).fillRoundedRect(8, 20, 59, 34, 10);
-      g.fillStyle(0xef4d64).fillRoundedRect(10, 19, 55, 31, 9);
-      g.fillStyle(0xffb4b7).fillRect(21, 26, 8, 16);
-      g.fillStyle(0xffd3d1).fillTriangle(42, 30, 57, 30, 49, 42);
+      // Crypto UFO with a gold underside that can be burst from below.
+      g.fillStyle(0x69e8df).fillEllipse(38, 24, 34, 34);
+      g.fillStyle(0xd0fff4).fillEllipse(32, 18, 12, 9);
+      g.fillStyle(0x5d3195).fillEllipse(38, 37, 73, 27);
+      g.fillStyle(0xb77aff).fillEllipse(38, 32, 70, 20);
+      g.fillStyle(0xffd35c).fillRoundedRect(22, 43, 32, 10, 5);
+      g.fillStyle(0xfff2b0).fillCircle(13, 33, 4).fillCircle(38, 35, 4).fillCircle(62, 33, 4);
       g.generateTexture('drone', 76, 62).clear();
       g.destroy();
     }
@@ -385,6 +385,14 @@
       }
       this.objects = this.objects.filter(({ event, image }) => {
         const remaining = event.tick * 1000 - this.run.distance1000;
+        if (event.burst) {
+          for (let i = 0; i < 12; i++) {
+            const spark = this.add.image(image.x, image.y, 'pixel').setTint(i % 2 ? 0xffd35c : 0xc18aff).setDisplaySize(7, 7).setDepth(8);
+            const angle = i * Math.PI / 6;
+            this.tweens.add({ targets: spark, x: spark.x + Math.cos(angle) * 65, y: spark.y + Math.sin(angle) * 65, alpha: 0, duration: 420, onComplete: () => spark.destroy() });
+          }
+          image.destroy(); return false;
+        }
         if (event.stomped) {
           this.tweens.add({ targets: image, scaleY: image.scaleY * .2, alpha: 0, duration: 200, onComplete: () => image.destroy() });
           return false;
@@ -457,9 +465,9 @@
       while (this.accumulator >= rules.STEP_MS && !this.run.over) {
         this.accumulator -= rules.STEP_MS;
         const result = rules.step(this.run, this.jumps[this.jumps.length - 1] === this.run.tick + 1);
-        if (result.stomp) {
+        if (result.stomp || result.airBurst) {
           sound(320, .16, 'triangle', 900);
-          const stompText = this.add.text(this.player.x, this.player.y - 65, 'BEAR STOMP +50', { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffdc72', stroke: '#172344', strokeThickness: 4 }).setOrigin(.5).setDepth(9);
+          const stompText = this.add.text(this.player.x, this.player.y - 65, result.airBurst ? 'UFO BURST +75' : 'BEAR STOMP +50', { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffdc72', stroke: '#172344', strokeThickness: 4 }).setOrigin(.5).setDepth(9);
           this.tweens.add({ targets: stompText, y: stompText.y - 35, alpha: 0, duration: 850, onComplete: () => stompText.destroy() });
         }
         if (result.pickup) {

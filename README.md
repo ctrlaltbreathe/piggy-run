@@ -14,6 +14,8 @@ The current rules increase movement speed by 6% every 2,000 points, up to 48% fa
 
 ## Local preview
 
+The flying hazard is now a purple crypto UFO. Jump into its gold underside to burst it for 75 points; side contact costs a life and passing below is safe. Replay version seven retains existing scores.
+
 Landing on a bear from above awards 50 points and a small bounce. Sideways and rising contact cost a life. Bear-stomp replay version six uses the existing version-five scoreboard and device best.
 
 Serve this directory with any static HTTP server, for example python -m http.server 8765, then open http://localhost:8765/.
