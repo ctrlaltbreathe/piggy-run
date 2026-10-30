@@ -2,3 +2,5 @@
 #share-status { display: block; margin: 8px 0 0; color: #c8d8ea; font-size: 11px; }
 .telegram-text-link { margin: 8px 0 0; color: #b6ffe9; text-decoration: none; }
 .telegram-text-link:focus-visible, #share-card:focus-visible { outline: 3px solid #ffd34f; outline-offset: 3px; }
+#save-card { margin-top: 8px; }
+#save-card:disabled { opacity: .55; cursor: wait; }

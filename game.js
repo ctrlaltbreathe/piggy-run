@@ -46,6 +46,7 @@
     const status = $('share-status');
     shareFile = null;
     button.disabled = true;
+    $('save-card').disabled = true;
     button.textContent = 'PREPARING SCORE CARD…';
     status.textContent = 'Making your PiggyBank score image.';
     try {
@@ -56,6 +57,7 @@
       canNativeShare = typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [shareFile] });
       button.textContent = canNativeShare ? 'SHARE SCORE CARD ↗' : 'SAVE SCORE CARD ↓';
       button.disabled = false;
+      $('save-card').disabled = false;
       status.textContent = canNativeShare ? 'Choose Telegram from your phone’s share menu.' : 'Save the image, then send it in Telegram.';
     } catch (_) {
       if (generation !== shareGeneration) return;
@@ -92,6 +94,9 @@
       downloadShareCard();
       $('share-status').textContent = 'Sharing was unavailable. Your score image was saved instead.';
     }
+  });
+  $('save-card').addEventListener('click', () => {
+    if (shareFile) downloadShareCard();
   });
 
   function setLeaders(rows) {
