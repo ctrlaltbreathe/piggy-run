@@ -6,12 +6,42 @@
   const gameoverPanel = $('gameover-panel');
   const scoreLabel = $('score');
   const bestLabel = $('best');
+  const worldBestLabel = $('world-best');
   const livesLabel = $('lives');
+  const rules = window.PiggyRunRules;
+  const API = 'https://piggybankbnb.com/api/piggy-run-score.php';
   let muted = false;
   let audioContext;
   let best = 0;
   try { best = Number(localStorage.getItem('piggy-run-best')) || 0; } catch (_) {}
   bestLabel.textContent = String(best);
+  let worldBest = null;
+
+  async function request(action, data = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
+    try {
+      const response = await fetch(API, {
+        method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...data }), signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Record service unavailable');
+      return result;
+    } finally { clearTimeout(timer); }
+  }
+
+  function setWorldBest(value) {
+    if (Number.isSafeInteger(value) && value >= 0) {
+      worldBest = value;
+      worldBestLabel.textContent = String(value);
+      $('record-status').textContent = 'World record is checked by the PiggyBank server. No wallets or rewards.';
+    }
+  }
+
+  request('status').then(result => setWorldBest(result.best)).catch(() => {
+    $('record-status').textContent = 'Record service unavailable. You can still play for fun.';
+  });
 
   function sound(frequency, duration, kind = 'sine', endFrequency = frequency) {
     if (muted) return;
@@ -39,12 +69,10 @@
     }
     create() {
       this.state = 'ready';
-      this.score = 0;
-      this.lives = 3;
-      this.elapsed = 0;
-      this.nextObstacle = 1400;
-      this.nextCoin = 900;
-      this.invulnerable = 0;
+      this.run = null;
+      this.runToken = null;
+      this.jumps = [];
+      this.accumulator = 0;
       this.objects = [];
       this.makeTextures();
       this.drawWorld();
@@ -111,31 +139,37 @@
       bg.fillStyle(0x1a2a4a).fillRect(0, this.groundY, w, h - this.groundY);
       bg.fillStyle(0x75e2c5).fillRect(0, this.groundY, w, 5);
       bg.fillStyle(0x334763).fillRect(0, this.groundY + 20, w, 4);
-      if (this.ground) this.ground.destroy();
-      this.ground = this.physics.add.staticImage(w / 2, this.groundY + 14, 'pixel');
-      this.ground.setDisplaySize(w, 28).refreshBody().setVisible(false);
     }
     createPlayer() {
-      this.player = this.physics.add.sprite(Math.max(85, this.scale.width * .2), this.groundY - 45, 'pig');
+      this.player = this.add.image(Math.max(85, this.scale.width * .2), this.groundY - 41, 'pig');
       this.player.setDisplaySize(118, 81).setDepth(3);
-      this.player.body.setSize(this.player.width * .70, this.player.height * .65);
-      this.player.body.setOffset(this.player.width * .16, this.player.height * .25);
-      this.player.setGravityY(1500).setCollideWorldBounds(false);
-      this.physics.add.collider(this.player, this.ground);
       this.runTween = this.tweens.add({ targets: this.player, angle: { from: -3, to: 3 }, duration: 130, yoyo: true, repeat: -1, paused: true });
     }
-    startRun() {
-      for (const object of this.objects) object.destroy();
+    async startRun() {
+      if (this.state === 'starting') return;
+      this.state = 'starting';
+      const button = gameoverPanel.classList.contains('hidden') ? $('start') : $('restart');
+      button.disabled = true;
+      let seed, token = null;
+      try {
+        const result = await request('start');
+        seed = result.seed;
+        token = result.token;
+        setWorldBest(result.best);
+      } catch (_) {
+        seed = crypto.getRandomValues(new Uint32Array(1))[0];
+        $('record-status').textContent = 'Record service unavailable. You can still play for fun.';
+      }
+      button.disabled = false;
+      for (const object of this.objects) object.image.destroy();
       this.objects = [];
+      this.run = rules.create(seed);
+      this.runToken = token;
+      this.jumps = [];
+      this.accumulator = 0;
+      this.renderIndex = 0;
       this.state = 'running';
-      this.score = 0;
-      this.lives = 3;
-      this.elapsed = 0;
-      this.nextObstacle = 1250;
-      this.nextCoin = 700;
-      this.invulnerable = 0;
-      this.player.clearTint().setAlpha(1).setAngle(0).setPosition(Math.max(85, this.scale.width * .2), this.groundY - 45);
-      this.player.setVelocity(0, 0).setActive(true).setVisible(true);
+      this.player.clearTint().setAlpha(1).setAngle(0).setPosition(Math.max(85, this.scale.width * .2), this.groundY - 41);
       this.runTween.resume();
       startPanel.classList.add('hidden');
       gameoverPanel.classList.add('hidden');
@@ -144,63 +178,46 @@
       sound(440, .08, 'triangle', 680);
     }
     jump() {
-      if (this.state !== 'running') return;
-      if (this.player.body.blocked.down || this.player.body.touching.down || (this.player.y >= this.groundY - 50 && this.player.body.velocity.y >= 0)) {
-        this.player.setVelocityY(-690);
-        this.tweens.add({ targets: this.player, scaleX: this.player.scaleX * 1.08, scaleY: this.player.scaleY * .92, duration: 110, yoyo: true });
-        sound(450, .16, 'sine', 780);
+      if (this.state !== 'running' || this.run.y10 !== 0) return;
+      const tick = this.run.tick + 1;
+      if (this.jumps[this.jumps.length - 1] === tick) return;
+      this.jumps.push(tick);
+      this.tweens.add({ targets: this.player, scaleX: this.player.scaleX * 1.08, scaleY: this.player.scaleY * .92, duration: 110, yoyo: true });
+      sound(450, .16, 'sine', 780);
+    }
+    renderObjects() {
+      const playerX = Math.max(85, this.scale.width * .2);
+      const stepDistance = (this.scale.width - playerX + 50) / 70;
+      while (this.renderIndex < this.run.events.length && this.run.events[this.renderIndex].tick - this.run.tick <= 70) {
+        const event = this.run.events[this.renderIndex++];
+        const coin = event.type.startsWith('coin');
+        const size = coin ? [43, 43] : event.type === 'bear' ? [62, 62] : [49, 59];
+        const y = coin ? this.groundY - (event.type === 'coin-high' ? 147 : 95) : this.groundY - size[1] / 2 + 1;
+        const image = this.add.image(0, y, coin ? 'coin' : event.type).setDisplaySize(size[0], size[1]).setDepth(coin ? 2 : 3);
+        this.objects.push({ event, image });
       }
-    }
-    addObject(key, y, size, type) {
-      const object = this.physics.add.image(this.scale.width + 45, y, key).setDisplaySize(size[0], size[1]).setDepth(type === 'coin' ? 2 : 3);
-      object.body.setAllowGravity(false);
-      object.body.setImmovable(true);
-      object.body.setSize(object.width * .78, object.height * .78);
-      object.body.setOffset(object.width * .11, object.height * .11);
-      object.kind = type;
-      object.used = false;
-      this.objects.push(object);
-      this.physics.add.overlap(this.player, object, () => {
-        if (object.used || this.state !== 'running') return;
-        object.used = true;
-        if (type === 'coin') {
-          this.score += 25;
-          this.updateHud();
-          sound(850, .12, 'sine', 1250);
-          this.tweens.add({ targets: object, y: object.y - 25, alpha: 0, duration: 180, onComplete: () => object.destroy() });
-        } else if (this.invulnerable <= 0) {
-          this.lives--;
-          this.invulnerable = 1350;
-          this.player.setTint(0xff6971);
-          this.cameras.main.shake(140, .006);
-          sound(240, .24, 'sawtooth', 80);
-          this.updateHud();
-          if (this.lives <= 0) this.endRun();
-        }
+      this.objects = this.objects.filter(({ event, image }) => {
+        const remaining = event.tick - this.run.tick;
+        if (remaining < -5) { image.destroy(); return false; }
+        image.x = playerX + remaining * stepDistance;
+        if (event.type.startsWith('coin')) image.angle = Math.sin(this.run.tick / 8 + event.tick / 12) * 9;
+        return true;
       });
-      return object;
-    }
-    spawnObstacle() {
-      const bear = Math.random() < .36;
-      const height = bear ? 62 : 59;
-      this.addObject(bear ? 'bear' : 'candle', this.groundY - height / 2 + 1, bear ? [62, 62] : [49, 59], bear ? 'bear' : 'candle');
-    }
-    spawnCoin() {
-      const high = Math.random() < .45;
-      this.addObject('coin', this.groundY - (high ? 147 : 95), [43, 43], 'coin');
     }
     updateHud() {
-      scoreLabel.textContent = String(Math.floor(this.score));
-      bestLabel.textContent = String(Math.max(best, Math.floor(this.score)));
-      livesLabel.textContent = Array.from({ length: 3 }, (_, i) => i < this.lives ? '♥' : '♡').join(' ');
-      livesLabel.setAttribute('aria-label', this.lives + (this.lives === 1 ? ' life' : ' lives'));
+      const score = this.run ? rules.score(this.run) : 0;
+      const lives = this.run ? this.run.lives : 3;
+      scoreLabel.textContent = String(score);
+      bestLabel.textContent = String(Math.max(best, score));
+      livesLabel.textContent = Array.from({ length: 3 }, (_, i) => i < lives ? '♥' : '♡').join(' ');
+      livesLabel.setAttribute('aria-label', lives + (lives === 1 ? ' life' : ' lives'));
     }
     endRun() {
       this.state = 'over';
       this.runTween.pause();
       app.classList.remove('playing');
       this.player.setTint(0xff9a9e);
-      const score = Math.floor(this.score);
+      const score = rules.score(this.run);
       const record = score > best;
       if (record) {
         best = score;
@@ -208,6 +225,14 @@
       }
       $('final-score').textContent = String(score);
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
+      const verification = $('verification-status');
+      verification.textContent = this.runToken ? 'Checking this run with the server…' : 'Casual run. Record service unavailable.';
+      if (this.runToken) {
+        request('finish', { token: this.runToken, ticks: this.run.tick, jumps: this.jumps }).then(result => {
+          setWorldBest(result.best);
+          verification.textContent = result.newBest ? 'Verified new world record! 🏆' : 'Score verified by the PiggyBank server.';
+        }).catch(() => { verification.textContent = 'Run could not be verified. Your personal best is saved on this device.'; });
+      }
       const url = new URL('https://piggybankbnb.com/piggy-run/');
       url.hash = '';
       url.search = '';
@@ -217,43 +242,32 @@
     }
     onResize(gameSize) {
       this.drawWorld();
-      this.physics.add.collider(this.player, this.ground);
       this.player.x = Math.max(85, gameSize.width * .2);
-      if (this.state !== 'running') this.player.y = this.groundY - 45;
+      this.player.y = this.groundY - 41 + (this.run?.y10 || 0) / 10;
     }
     update(_, delta) {
       if (this.state !== 'running') return;
-      const dt = Math.min(delta, 50);
-      this.elapsed += dt;
-      this.score += dt * .009;
-      this.invulnerable = Math.max(0, this.invulnerable - dt);
-      if (this.invulnerable <= 0) this.player.clearTint().setAlpha(1);
-      else this.player.setAlpha(Math.floor(this.invulnerable / 110) % 2 ? .45 : 1);
-      const seconds = this.elapsed / 1000;
-      const speed = Math.min(this.scale.width < 500 ? 360 : 460, (this.scale.width < 500 ? 205 : 255) + seconds * 3.6);
-      this.nextObstacle -= dt;
-      this.nextCoin -= dt;
-      if (this.nextObstacle <= 0) {
-        this.spawnObstacle();
-        this.nextObstacle = Math.max(1050, 1750 - seconds * 11) + Math.random() * 230;
+      this.accumulator += Math.min(delta, 100);
+      while (this.accumulator >= rules.STEP_MS && !this.run.over) {
+        this.accumulator -= rules.STEP_MS;
+        const result = rules.step(this.run, this.jumps[this.jumps.length - 1] === this.run.tick + 1);
+        if (result.coin) sound(850, .12, 'sine', 1250);
+        if (result.hit) {
+          this.cameras.main.shake(140, .006);
+          sound(240, .24, 'sawtooth', 80);
+        }
       }
-      if (this.nextCoin <= 0) {
-        this.spawnCoin();
-        this.nextCoin = 1250 + Math.random() * 700;
-      }
-      for (const object of this.objects) {
-        if (!object.active || object.used) continue;
-        object.setVelocityX(-speed);
-        if (object.kind === 'coin') object.angle = Math.sin(this.elapsed / 160 + object.x / 45) * 9;
-        if (object.x < -90) object.destroy();
-      }
-      this.objects = this.objects.filter(object => object.active);
-      if (this.player.y > this.scale.height + 100) this.endRun();
+      this.player.y = this.groundY - 41 + this.run.y10 / 10;
+      if (this.run.immune > 0) {
+        this.player.setTint(0xff6971).setAlpha(Math.floor(this.run.immune / 5) % 2 ? .55 : 1);
+      } else this.player.clearTint().setAlpha(1);
+      this.renderObjects();
       this.updateHud();
+      if (this.run.over || this.run.tick >= rules.MAX_TICKS) this.endRun();
     }
   }
 
-  if (!window.Phaser) {
+  if (!window.Phaser || !rules) {
     $('start-title').textContent = 'GAME UNAVAILABLE';
     startPanel.querySelector('p:not(.eyebrow)').textContent = 'The game engine could not load. Please refresh when you are online.';
     $('start').hidden = true;
@@ -264,7 +278,6 @@
     parent: 'game',
     backgroundColor: '#142441',
     scale: { mode: Phaser.Scale.RESIZE, width: app.clientWidth, height: app.clientHeight, autoCenter: Phaser.Scale.CENTER_BOTH },
-    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
     scene: Runner,
     render: { antialias: true, pixelArt: false }
   });

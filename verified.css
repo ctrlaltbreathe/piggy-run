@@ -1,0 +1,10 @@
+@media (max-width: 600px) {
+  .hud { gap: 5px; }
+  .brand { font-size: 12px; letter-spacing: 0; }
+  .brand img { width: 24px; height: 24px; }
+  .stats { gap: 5px; }
+  .lives { font-size: 15px; }
+  .icon-button { width: 30px; height: 30px; font-size: 16px; }
+}
+.primary-button:disabled { opacity: .65; cursor: wait; }
+#verification-status { display: block; margin: 4px 0 12px; color: #b6ffe9; font-weight: 700; }
