@@ -61,6 +61,7 @@
     leadersOpener = event.currentTarget;
     leadersPanel.classList.remove('hidden');
     $('leaders-close').focus();
+    request('status').then(result => { setWorldBest(result.best); setLeaders(result.leaders); }).catch(() => {});
   }
   function closeLeaders() {
     leadersPanel.classList.add('hidden');
