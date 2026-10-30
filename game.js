@@ -9,7 +9,9 @@
   const worldBestLabel = $('world-best');
   const livesLabel = $('lives');
   const rules = window.PiggyRunRules;
+  const cardMaker = window.PiggyRunShareCard;
   const API = 'https://piggybankbnb.com/api/piggy-run-score.php';
+  const GAME_URL = 'https://piggybankbnb.com/piggy-run/';
   let muted = false;
   let audioContext;
   let best = 0;
@@ -17,6 +19,11 @@
   bestLabel.textContent = String(best);
   let worldBest = null;
   let player = null;
+  let shareScore = null;
+  let shareVerified = false;
+  let shareFile = null;
+  let shareGeneration = 0;
+  let canNativeShare = false;
   try {
     const saved = JSON.parse(localStorage.getItem('piggy-run-player') || 'null');
     if (saved && typeof saved.id === 'string' && typeof saved.key === 'string') player = saved;
@@ -30,7 +37,62 @@
     try { localStorage.setItem('piggy-run-player', JSON.stringify(player)); } catch (_) {}
     $('player-name').textContent = 'You are ' + player.name;
     $('player-name-input').value = player.name.startsWith('Piggy ') ? '' : player.name;
+    if (shareScore !== null) prepareShareCard();
   }
+
+  async function prepareShareCard() {
+    const generation = ++shareGeneration;
+    const button = $('share-card');
+    const status = $('share-status');
+    shareFile = null;
+    button.disabled = true;
+    button.textContent = 'PREPARING SCORE CARD…';
+    status.textContent = 'Making your PiggyBank score image.';
+    try {
+      if (!cardMaker) throw new Error('Card maker unavailable');
+      const blob = await cardMaker.create({ score: shareScore, name: player?.name || 'Piggy Runner', verified: shareVerified });
+      if (generation !== shareGeneration) return;
+      shareFile = new File([blob], 'piggy-run-' + shareScore + '.png', { type: 'image/png' });
+      canNativeShare = typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [shareFile] });
+      button.textContent = canNativeShare ? 'SHARE SCORE CARD ↗' : 'SAVE SCORE CARD ↓';
+      button.disabled = false;
+      status.textContent = canNativeShare ? 'Choose Telegram from your phone’s share menu.' : 'Save the image, then send it in Telegram.';
+    } catch (_) {
+      if (generation !== shareGeneration) return;
+      button.textContent = 'SCORE CARD UNAVAILABLE';
+      status.textContent = 'The text link below still works.';
+    }
+  }
+
+  function downloadShareCard() {
+    const url = URL.createObjectURL(shareFile);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = shareFile.name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  $('share-card').addEventListener('click', async () => {
+    if (!shareFile) return;
+    if (!canNativeShare) {
+      downloadShareCard();
+      return;
+    }
+    try {
+      await navigator.share({
+        files: [shareFile], title: 'Piggy Run score',
+        text: 'I scored ' + shareScore + ' in Piggy Run! Can you beat me? ' + GAME_URL
+      });
+      $('share-status').textContent = 'Score card shared.';
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      downloadShareCard();
+      $('share-status').textContent = 'Sharing was unavailable. Your score image was saved instead.';
+    }
+  });
 
   function setLeaders(rows) {
     if (!Array.isArray(rows)) return;
@@ -237,6 +299,9 @@
     async startRun() {
       if (this.state === 'starting') return;
       this.state = 'starting';
+      shareScore = null;
+      shareFile = null;
+      shareGeneration++;
       const button = gameoverPanel.classList.contains('hidden') ? $('start') : $('restart');
       button.disabled = true;
       let seed, token = null;
@@ -323,19 +388,25 @@
       }
       $('final-score').textContent = String(score);
       $('best-message').textContent = record ? 'New personal best! ✨' : 'Best score: ' + best;
+      shareScore = score;
+      shareVerified = false;
+      prepareShareCard();
       const verification = $('verification-status');
       verification.textContent = this.runToken ? 'Checking this run with the server…' : 'Casual run. Record service unavailable.';
       $('name-controls').classList.add('hidden');
       if (this.runToken) {
         request('finish', { token: this.runToken, ticks: this.run.tick, jumps: this.jumps }).then(result => {
+          if (result.score !== score) throw new Error('Verified score mismatch');
           setWorldBest(result.best);
           setPreviousBest(result.previousBest);
           setLeaders(result.leaders);
           verification.textContent = result.newBest ? 'Verified new world record! 🏆' : 'Score verified by the PiggyBank server.';
           $('name-controls').classList.remove('hidden');
+          shareVerified = true;
+          prepareShareCard();
         }).catch(() => { verification.textContent = 'Run could not be verified. Your personal best is saved on this device.'; });
       }
-      const url = new URL('https://piggybankbnb.com/piggy-run/');
+      const url = new URL(GAME_URL);
       url.hash = '';
       url.search = '';
       $('telegram-share').href = 'https://t.me/share/url?url=' + encodeURIComponent(url.href) + '&text=' + encodeURIComponent('I scored ' + score + ' in Piggy Run! Can you beat me? 🐷🪙');
